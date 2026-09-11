@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schofield &amp; Broadbent Ancestral Atlas — UK Locations</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#241f1c;
+    --paper:#eae2cf;
+    --paper-line:#c7bb9c;
+    --paper-line-soft:#d9cfb2;
+    --map-bg:#d8ded9;
+    --schofield:#2f4b73;
+    --schofield-soft:#5b7398;
+    --broadbent:#8b3a2b;
+    --broadbent-soft:#a9614f;
+    --brass:#9c7a2e;
+    --cream:#f7f2e4;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    font-family:'IBM Plex Sans', sans-serif;
+    color:var(--ink);
+    background:var(--map-bg);
+    display:flex;
+    height:100vh;
+    overflow:hidden;
+  }
+
+  /* ---------- Sidebar ---------- */
+  #sidebar{
+    width:360px;
+    min-width:360px;
+    background:var(--paper);
+    border-right:1px solid var(--paper-line);
+    display:flex;
+    flex-direction:column;
+    height:100%;
+  }
+  #sidebar-scroll{
+    overflow-y:auto;
+    flex:1;
+    padding:22px 22px 12px 22px;
+  }
+  #sidebar-header{
+    padding:22px 22px 14px 22px;
+    border-bottom:1px solid var(--paper-line);
+  }
+  h1{
+    font-family:'Spectral', serif;
+    font-size:22px;
+    font-weight:600;
+    line-height:1.25;
+    margin:0 0 4px 0;
+    color:var(--ink);
+  }
+  .subtitle{
+    font-size:13px;
+    color:#5c5346;
+    line-height:1.5;
+    margin:0;
+  }
+  #count-line{
+    margin-top:12px;
+    font-size:13px;
+    color:var(--ink);
+    font-weight:500;
+    border-top:1px solid var(--paper-line-soft);
+    padding-top:10px;
+  }
+  #count-line span{color:var(--brass); font-weight:600;}
+
+  section.filter-block{
+    margin-bottom:22px;
+    padding-bottom:18px;
+    border-bottom:1px solid var(--paper-line-soft);
+  }
+  section.filter-block:last-child{border-bottom:none;}
+  .block-title{
+    font-family:'Spectral', serif;
+    font-size:15px;
+    font-weight:600;
+    margin:0 0 10px 0;
+    color:var(--ink);
+  }
+  .block-hint{
+    font-size:11.5px;
+    color:#786e5c;
+    margin:-6px 0 10px 0;
+    line-height:1.4;
+  }
+
+  .line-row{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:6px 0;
+    cursor:pointer;
+    font-size:14px;
+    user-select:none;
+  }
+  .line-row input{accent-color:var(--brass); width:15px; height:15px; cursor:pointer;}
+  .swatch{
+    width:12px; height:12px; border-radius:50%;
+    display:inline-block;
+    flex-shrink:0;
+  }
+  .swatch.schofield{background:var(--schofield);}
+  .swatch.broadbent{background:var(--broadbent);}
+  .line-count{margin-left:auto; font-size:12px; color:#786e5c;}
+
+  .person-group-label{
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:#8a7f6a;
+    margin:12px 0 4px 0;
+    font-weight:600;
+  }
+  .person-group-label:first-child{margin-top:0;}
+  .person-row{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+    padding:4px 0;
+    cursor:pointer;
+    font-size:13.5px;
+    line-height:1.35;
+  }
+  .person-row input{margin-top:2px; accent-color:var(--brass); width:14px; height:14px; cursor:pointer; flex-shrink:0;}
+
+  .gen-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:7px;
+  }
+  .gen-chip{
+    border:1px solid var(--paper-line);
+    background:var(--cream);
+    padding:6px 11px;
+    border-radius:3px;
+    font-size:12.5px;
+    cursor:pointer;
+    user-select:none;
+    color:#5c5346;
+  }
+  .gen-chip.active{
+    background:var(--ink);
+    color:var(--cream);
+    border-color:var(--ink);
+  }
+
+  .range-labels{
+    display:flex;
+    justify-content:space-between;
+    font-size:12.5px;
+    color:#5c5346;
+    margin-bottom:6px;
+  }
+  .range-labels b{color:var(--ink);}
+  .slider-wrap{position:relative; height:28px; margin-top:4px;}
+  .slider-wrap input[type=range]{
+    position:absolute;
+    width:100%;
+    top:10px;
+    -webkit-appearance:none;
+    appearance:none;
+    background:transparent;
+    pointer-events:none;
+    margin:0;
+  }
+  .slider-wrap input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    pointer-events:all;
+    width:15px; height:15px;
+    border-radius:50%;
+    background:var(--brass);
+    border:2px solid var(--cream);
+    cursor:pointer;
+    margin-top:-6px;
+  }
+  .slider-wrap input[type=range]::-moz-range-thumb{
+    pointer-events:all;
+    width:13px; height:13px;
+    border-radius:50%;
+    background:var(--brass);
+    border:2px solid var(--cream);
+    cursor:pointer;
+  }
+  .slider-wrap input[type=range]::-webkit-slider-runnable-track{
+    height:3px; background:transparent;
+  }
+  .slider-wrap input[type=range]::-moz-range-track{
+    height:3px; background:transparent;
+  }
+  .slider-track{
+    position:absolute;
+    top:13px; left:0; right:0; height:3px;
+    background:var(--paper-line);
+    border-radius:2px;
+  }
+  .slider-range{
+    position:absolute;
+    top:13px; height:3px;
+    background:var(--brass);
+    border-radius:2px;
+  }
+
+  #reset-btn{
+    width:100%;
+    padding:10px;
+    background:transparent;
+    border:1px solid var(--ink);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px;
+    font-weight:500;
+    border-radius:3px;
+    cursor:pointer;
+    margin-top:2px;
+  }
+  #reset-btn:hover{background:var(--ink); color:var(--cream);}
+
+  #sidebar-footer{
+    padding:14px 22px 18px 22px;
+    border-top:1px solid var(--paper-line);
+    font-size:11px;
+    color:#8a7f6a;
+    line-height:1.5;
+  }
+
+  /* ---------- Map ---------- */
+  #map-wrap{flex:1; height:100%; position:relative;}
+  #map{width:100%; height:100%;}
+
+  .leaflet-popup-content-wrapper{
+    background:var(--cream);
+    border-radius:4px;
+    box-shadow:0 4px 18px rgba(36,31,28,0.28);
+  }
+  .leaflet-popup-tip{background:var(--cream);}
+  .popup-name{
+    font-family:'Spectral', serif;
+    font-size:16px;
+    font-weight:600;
+    margin:0 0 2px 0;
+    color:var(--ink);
+  }
+  .popup-line{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-size:11px;
+    color:#5c5346;
+    margin-bottom:8px;
+  }
+  .popup-line .swatch{width:9px; height:9px;}
+  .popup-row{font-size:13px; margin:3px 0; line-height:1.4;}
+  .popup-row b{color:var(--ink); font-weight:600;}
+  .popup-note{
+    margin-top:8px;
+    padding-top:7px;
+    border-top:1px solid var(--paper-line-soft);
+    font-size:11.5px;
+    color:#8a5c2e;
+    font-style:italic;
+    line-height:1.4;
+  }
+  .leaflet-tooltip.evt-tooltip{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:12px;
+    background:var(--ink);
+    color:var(--cream);
+    border:none;
+    padding:5px 9px;
+    border-radius:3px;
+  }
+  .leaflet-tooltip.evt-tooltip::before{border-top-color:var(--ink);}
+
+  #legend{
+    position:absolute;
+    bottom:22px;
+    left:14px;
+    background:var(--cream);
+    border:1px solid var(--paper-line);
+    border-radius:4px;
+    padding:10px 14px;
+    font-size:12px;
+    box-shadow:0 2px 10px rgba(36,31,28,0.15);
+    z-index:500;
+  }
+  #legend .legend-row{display:flex; align-items:center; gap:7px; margin:3px 0;}
+
+  ::-webkit-scrollbar{width:9px;}
+  ::-webkit-scrollbar-track{background:var(--paper);}
+  ::-webkit-scrollbar-thumb{background:var(--paper-line); border-radius:4px;}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h1>Schofield &amp; Broadbent<br>Ancestral Atlas</h1>
+    <p class="subtitle">UK locations from the Schofield–Broadbent family tree, 1751–1922</p>
+    <div id="count-line">Showing <span id="visible-count">0</span> of <span id="total-count">0</span> recorded events</div>
+  </div>
+
+  <div id="sidebar-scroll">
+
+    <section class="filter-block">
+      <p class="block-title">Family line</p>
+      <label class="line-row">
+        <input type="checkbox" id="line-schofield" checked>
+        <span class="swatch schofield"></span> Schofield
+        <span class="line-count" id="count-schofield"></span>
+      </label>
+      <label class="line-row">
+        <input type="checkbox" id="line-broadbent" checked>
+        <span class="swatch broadbent"></span> Broadbent
+        <span class="line-count" id="count-broadbent"></span>
+      </label>
+    </section>
+
+    <section class="filter-block">
+      <p class="block-title">Individual</p>
+      <p class="block-hint">Only people from lines checked above are listed.</p>
+      <div id="person-list"></div>
+    </section>
+
+    <section class="filter-block">
+      <p class="block-title">Generation</p>
+      <p class="block-hint">Gen 1 is the tree's starting individual on each line.</p>
+      <div class="gen-grid" id="gen-grid"></div>
+    </section>
+
+    <section class="filter-block">
+      <p class="block-title">Date range</p>
+      <div class="range-labels"><span>From <b id="year-min-label"></b></span><span>To <b id="year-max-label"></b></span></div>
+      <div class="slider-wrap">
+        <div class="slider-track"></div>
+        <div class="slider-range" id="slider-range-fill"></div>
+        <input type="range" id="range-min">
+        <input type="range" id="range-max">
+      </div>
+    </section>
+
+    <button id="reset-btn">Reset all filters</button>
+  </div>
+
+  <div id="sidebar-footer">
+    Locations are placed at the nearest historic village, township or parish named in the source records — not exact addresses. United States events and residences are excluded by design. Map tiles &amp; place names &copy; OpenStreetMap contributors. An internet connection is required to load the map.
+  </div>
+</div>
+
+<div id="map-wrap">
+  <div id="map"></div>
+  <div id="legend">
+    <div class="legend-row"><span class="swatch schofield"></span> Schofield line</div>
+    <div class="legend-row"><span class="swatch broadbent"></span> Broadbent line</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ============================================================
+   DATA
+   Base coordinates are approximate centres of the named historic
+   village / township, used to place multiple events per location.
+   ============================================================ */
+const PLACES = {
+  LYDGATE:              [53.5426, -2.0161],
+  SADDLEWORTH:          [53.5478, -2.0000],
+  DOBCROSS:             [53.5459, -2.0248],
+  ROCHDALE:             [53.6097, -2.1561],
+  WOOLDALE:             [53.5735, -1.7645],
+  FULSTONE:             [53.5680, -1.7508],
+  NEW_MILL:             [53.5691, -1.7629],
+  HOLLINGREAVE_NEWMILL: [53.5700, -1.7600],
+  NETHERTHONG:          [53.5624, -1.8103],
+  UPPERTHONG:           [53.5654, -1.8095],
+  HOLMFIRTH:            [53.5578, -1.7969],
+  HUDDERSFIELD:         [53.6458, -1.7850],
+  ALMONDBURY:           [53.6339, -1.7645],
+  ASHTON:               [53.4895, -2.0955],
+  DUKINFIELD:           [53.4767, -2.0836],
+  HAUGHTON:             [53.4494, -2.0752],
+  TONGE:                [53.5860, -2.4090],
+  DENTON:               [53.4602, -2.1093],
+  WEST_RIDING:          [53.6833, -1.4977]
+};
+
+const events = [
+  // ---- SCHOFIELD LINE ----
+  {person:"John Buckley Schofield", line:"Schofield", gen:1, year:1826, date:"31 May 1826", event:"Birth", place:"Lydgate, Saddleworth, Yorkshire, England", key:"LYDGATE"},
+  {person:"John Buckley Schofield", line:"Schofield", gen:1, year:1826, date:"31 May 1826", event:"Christening", place:"Saddleworth, Yorkshire, England", key:"SADDLEWORTH", note:"Parish recorded as \"Lancashire\" in this collection; Saddleworth sits on the Yorkshire/Lancashire border and is recorded inconsistently across sources."},
+  {person:"John Buckley Schofield", line:"Schofield", gen:1, year:1826, date:"31 May 1826", event:"Baptism", place:"Chapelry of Lydgate (St Anne), Saddleworth, Yorkshire, England", key:"LYDGATE"},
+
+  {person:"William Schofield", line:"Schofield", gen:2, year:1787, date:"abt 1787", event:"Birth", place:"Saddleworth, Yorkshire, England", key:"SADDLEWORTH"},
+  {person:"William Schofield", line:"Schofield", gen:2, year:1812, date:"5 Oct 1812", event:"Marriage — to Ann Buckley", place:"St Chad's Church, Rochdale, Lancashire, England", key:"ROCHDALE"},
+
+  {person:"Ann Buckley", line:"Schofield", gen:2, year:1797, date:"1797", event:"Birth", place:"Saddleworth, Yorkshire, England", key:"SADDLEWORTH"},
+  {person:"Ann Buckley", line:"Schofield", gen:2, year:1797, date:"29 Oct 1797", event:"Baptism", place:"Lydgate, St Anne, Yorkshire, England", key:"LYDGATE"},
+  {person:"Ann Buckley", line:"Schofield", gen:2, year:1812, date:"5 Oct 1812", event:"Marriage — to William Schofield", place:"St Chad's Church, Rochdale, Lancashire, England", key:"ROCHDALE"},
+  {person:"Ann Buckley", line:"Schofield", gen:2, year:1851, date:"1851 census", event:"Residence — Inn Keeper, Head of household (widow)", place:"Nudger Inn, Dobcross, Saddleworth, Yorkshire, England", key:"DOBCROSS"},
+  {person:"Ann Buckley", line:"Schofield", gen:2, year:1861, date:"1861 census", event:"Residence — Inn Keeper, Head of household", place:"Dob Cross, Saddleworth, Yorkshire, England", key:"DOBCROSS"},
+
+  // ---- BROADBENT LINE ----
+  {person:"Samuel Broadbent", line:"Broadbent", gen:1, year:1868, date:"25 Mar 1868", event:"Birth", place:"Wooldale, Yorkshire, England", key:"WOOLDALE"},
+  {person:"Samuel Broadbent", line:"Broadbent", gen:1, year:1871, date:"1871 census", event:"Residence — son, in father Joseph's household", place:"No. 10 Lane Bottom, Wooldale, Yorkshire, England", key:"WOOLDALE"},
+  {person:"Samuel Broadbent", line:"Broadbent", gen:1, year:1881, date:"1881 census", event:"Residence — son, in widowed mother Hannah's household", place:"Hollingreave, Fulstone, Yorkshire, England", key:"FULSTONE"},
+
+  {person:"Joseph Broadbent", line:"Broadbent", gen:2, year:1844, date:"13 Jun 1844", event:"Birth", place:"Wooldale, Yorkshire, England", key:"WOOLDALE"},
+  {person:"Joseph Broadbent", line:"Broadbent", gen:2, year:1844, date:"1 Sep 1844", event:"Baptism", place:"New Mill, Christ Church, Yorkshire, England", key:"NEW_MILL"},
+  {person:"Joseph Broadbent", line:"Broadbent", gen:2, year:1851, date:"1851 census", event:"Residence — son, age 6, father Joshua's household", place:"Upperthong, Yorkshire, England", key:"UPPERTHONG"},
+  {person:"Joseph Broadbent", line:"Broadbent", gen:2, year:1861, date:"1861 census", event:"Residence — son, age 16", place:"Wooldale, Yorkshire, England", key:"WOOLDALE"},
+  {person:"Joseph Broadbent", line:"Broadbent", gen:2, year:1863, date:"Sep 1863", event:"Marriage — to Hannah Newton", place:"Huddersfield, Yorkshire, England", key:"HUDDERSFIELD", note:"Two conflicting marriage records exist for Joseph and Hannah — this unsourced one and the 16 Apr 1866 Ashton-under-Lyne record below. The true date/place is unresolved in the tree."},
+  {person:"Joseph Broadbent", line:"Broadbent", gen:2, year:1866, date:"16 Apr 1866", event:"Marriage — to Hannah Newton", place:"Ashton-under-Lyne, Lancashire, England", key:"ASHTON", note:"This sourced record names the groom's father as \"James Broadbent\" (not Joseph's actual father Joshua) and post-dates two of the couple's children's births — likely a mismatched index entry."},
+  {person:"Joseph Broadbent", line:"Broadbent", gen:2, year:1871, date:"1871 census", event:"Residence — Head of household", place:"No. 10 Lane Bottom, Wooldale, Yorkshire, England", key:"WOOLDALE"},
+  {person:"Joseph Broadbent", line:"Broadbent", gen:2, year:1880, date:"Oct 1880", event:"Death", place:"Hollingreave, New Mill, Yorkshire, England", key:"HOLLINGREAVE_NEWMILL"},
+  {person:"Joseph Broadbent", line:"Broadbent", gen:2, year:1880, date:"10 Nov 1880", event:"Burial", place:"New Mill, Christ Church, Yorkshire, England", key:"NEW_MILL"},
+
+  {person:"Hannah Newton", line:"Broadbent", gen:2, year:1844, date:"1844", event:"Birth", place:"Wooldale, Yorkshire, England", key:"WOOLDALE"},
+  {person:"Hannah Newton", line:"Broadbent", gen:2, year:1871, date:"1871 census", event:"Residence — Wife", place:"Lane Bottom, Holmfirth, Yorkshire, England", key:"HOLMFIRTH"},
+  {person:"Hannah Newton", line:"Broadbent", gen:2, year:1881, date:"1881 census", event:"Residence — Head of household, widowed", place:"Hollingreave, Fulstone, Yorkshire, England", key:"FULSTONE"},
+  {person:"Hannah Newton", line:"Broadbent", gen:2, year:1922, date:"Aug 1922", event:"Death", place:"Netherthong, Yorkshire, England", key:"NETHERTHONG"},
+
+  {person:"Joshua Broadbent", line:"Broadbent", gen:3, year:1819, date:"abt 1819", event:"Birth", place:"Wooldale, Yorkshire, England", key:"WOOLDALE"},
+  {person:"Joshua Broadbent", line:"Broadbent", gen:3, year:1842, date:"31 Oct 1842", event:"Marriage — to Elizabeth Lee / \"Hannah Broadbent\"", place:"Huddersfield, Yorkshire, England", key:"HUDDERSFIELD"},
+  {person:"Joshua Broadbent", line:"Broadbent", gen:3, year:1851, date:"1851 census", event:"Residence — Head of household", place:"Upperthong, Yorkshire, England", key:"UPPERTHONG"},
+  {person:"Joshua Broadbent", line:"Broadbent", gen:3, year:1861, date:"1861 census", event:"Residence — Head of household", place:"Wooldale, Yorkshire, England", key:"WOOLDALE"},
+  {person:"Joshua Broadbent", line:"Broadbent", gen:3, year:1881, date:"1881 census", event:"Residence — Head of household, widower", place:"Upperthong, Yorkshire, England", key:"UPPERTHONG"},
+  {person:"Joshua Broadbent", line:"Broadbent", gen:3, year:1897, date:"Dec 1897", event:"Death", place:"Yorkshire West Riding, England", key:"WEST_RIDING", note:"Only the county (West Riding) is recorded — no specific town. Marker is placed at an approximate central point, not an exact location."},
+
+  {person:"Elizabeth Lee / \"Hannah Broadbent\"", line:"Broadbent", gen:3, year:1824, date:"abt 1824", event:"Birth (per \"Elizabeth Lee\" record)", place:"Wooldale, Yorkshire, England", key:"WOOLDALE", note:"The tree carries two conflicting spouse identities for Joshua's wife: \"Elizabeth Lee\" (b. abt 1824, Wooldale) and \"Hannah Broadbent\" (b. 1822, Almondbury) — almost certainly one woman recorded under two names/sources."},
+  {person:"Elizabeth Lee / \"Hannah Broadbent\"", line:"Broadbent", gen:3, year:1822, date:"1822", event:"Birth (per \"Hannah Broadbent\" record)", place:"Almondbury, Yorkshire, England", key:"ALMONDBURY", note:"See note on the 1824 Wooldale birth record above — same conflict, unresolved in the tree."},
+  {person:"Elizabeth Lee / \"Hannah Broadbent\"", line:"Broadbent", gen:3, year:1842, date:"31 Oct 1842", event:"Marriage — to Joshua Broadbent", place:"Huddersfield, Yorkshire, England", key:"HUDDERSFIELD"},
+  {person:"Elizabeth Lee / \"Hannah Broadbent\"", line:"Broadbent", gen:3, year:1851, date:"1851 census", event:"Residence — Wife", place:"Upperthong, Yorkshire, England", key:"UPPERTHONG"},
+  {person:"Elizabeth Lee / \"Hannah Broadbent\"", line:"Broadbent", gen:3, year:1861, date:"1861 census", event:"Residence — Wife (recorded as \"Hannah\")", place:"Wooldale, Yorkshire, England", key:"WOOLDALE"},
+
+  {person:"Martha Fogg", line:"Broadbent", gen:3, year:1816, date:"abt 1816", event:"Birth", place:"Ashton-under-Lyne, Lancashire, England", key:"ASHTON"},
+
+  {person:"Joseph Newton Haughton", line:"Broadbent", gen:4, year:1786, date:"abt 1786", event:"Birth", place:"Dukinfield, Stockport, Cheshire, England", key:"DUKINFIELD"},
+
+  {person:"Hannah Bowler", line:"Broadbent", gen:4, year:1787, date:"abt 1787", event:"Birth", place:"Ashton-under-Lyne, Lancashire, England", key:"ASHTON"},
+
+  {person:"Thomas Fogg", line:"Broadbent", gen:4, year:1784, date:"abt 1784", event:"Birth", place:"Haughton, Cheshire, England (near Hyde; now Greater Manchester)", key:"HAUGHTON"},
+  {person:"Thomas Fogg", line:"Broadbent", gen:4, year:1832, date:"bef 6 May 1832", event:"Death", place:"Crowhill, Ashton-under-Lyne, Lancashire, England", key:"ASHTON"},
+
+  {person:"Hannah Travis", line:"Broadbent", gen:4, year:1786, date:"abt 1786", event:"Birth", place:"Ashton-under-Lyne, Lancashire, England", key:"ASHTON"},
+  {person:"Hannah Travis", line:"Broadbent", gen:4, year:1786, date:"26 Feb 1786", event:"Baptism", place:"St. Michael's, Ashton-under-Lyne, Lancashire, England", key:"ASHTON"},
+  {person:"Hannah Travis", line:"Broadbent", gen:4, year:1870, date:"Jan 1870", event:"Death", place:"Ashton-under-Lyne, Lancashire, England", key:"ASHTON"},
+
+  {person:"James Fogg", line:"Broadbent", gen:5, year:1766, date:"11 Apr 1766", event:"Birth", place:"Tonge, Bolton, Lancashire, England", key:"TONGE"},
+
+  {person:"John Bowler", line:"Broadbent", gen:5, year:1751, date:"11 Jan 1751", event:"Birth", place:"Denton, Lancashire, England", key:"DENTON"},
+  {person:"John Bowler", line:"Broadbent", gen:5, year:1833, date:"1833", event:"Death", place:"Denton, Lancashire, England", key:"DENTON"},
+
+  {person:"Rachel Wood", line:"Broadbent", gen:5, year:1759, date:"bef 21 Oct 1759", event:"Birth", place:"Ashton-under-Lyne, Lancashire, England", key:"ASHTON"},
+  {person:"Rachel Wood", line:"Broadbent", gen:5, year:1846, date:"bef 22 Mar 1846", event:"Death", place:"Ashton-under-Lyne, Lancashire, England", key:"ASHTON"}
+];
+
+/* ============================================================
+   BUILD MARKER COORDINATES (jitter events sharing a place)
+   ============================================================ */
+const groups = {};
+events.forEach((e,i) => { e.idx = i; (groups[e.key] = groups[e.key] || []).push(e); });
+Object.values(groups).forEach(group => {
+  const n = group.length;
+  const base = PLACES[group[0].key];
+  group.forEach((e,i) => {
+    if(n === 1){ e.lat = base[0]; e.lon = base[1]; return; }
+    const angle = (2*Math.PI*i)/n;
+    e.lat = base[0] + 0.0038*Math.sin(angle);
+    e.lon = base[1] + 0.0065*Math.cos(angle);
+  });
+});
+
+const people = [...new Set(events.map(e => e.person))].map(name => {
+  const rec = events.find(e => e.person === name);
+  return {name, line: rec.line, gen: rec.gen};
+}).sort((a,b) => a.gen - b.gen || a.name.localeCompare(b.name));
+
+const generations = [...new Set(events.map(e => e.gen))].sort((a,b)=>a-b);
+const years = events.map(e => e.year);
+const YEAR_MIN = Math.min(...years), YEAR_MAX = Math.max(...years);
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {
+  lines: {Schofield:true, Broadbent:true},
+  people: Object.fromEntries(people.map(p => [p.name, true])),
+  gens: Object.fromEntries(generations.map(g => [g, true])),
+  yearMin: YEAR_MIN,
+  yearMax: YEAR_MAX
+};
+
+/* ============================================================
+   MAP
+   ============================================================ */
+const map = L.map('map', {zoomSnap:0.25}).setView([53.55, -1.92], 9.2);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
+
+const LINE_COLOR = {Schofield: '#2f4b73', Broadbent: '#8b3a2b'};
+
+const markers = events.map(e => {
+  const m = L.circleMarker([e.lat, e.lon], {
+    radius: 7,
+    weight: 2,
+    color: '#f7f2e4',
+    fillColor: LINE_COLOR[e.line],
+    fillOpacity: 0.92
+  });
+  m.bindTooltip(`${e.person} · ${e.event.split(' — ')[0]} · ${e.year}`, {className:'evt-tooltip', direction:'top', offset:[0,-6]});
+  const noteHtml = e.note ? `<div class="popup-note">${e.note}</div>` : '';
+  m.bindPopup(`
+    <div class="popup-name">${e.person}</div>
+    <div class="popup-line"><span class="swatch ${e.line.toLowerCase()}"></span>${e.line} line · Generation ${e.gen}</div>
+    <div class="popup-row"><b>Event:</b> ${e.event}</div>
+    <div class="popup-row"><b>Date:</b> ${e.date}</div>
+    <div class="popup-row"><b>Place:</b> ${e.place}</div>
+    ${noteHtml}
+  `, {maxWidth: 320});
+  m.evt = e;
+  m.addTo(map);
+  return m;
+});
+
+/* ============================================================
+   SIDEBAR — build person list & generation chips
+   ============================================================ */
+const personListEl = document.getElementById('person-list');
+function renderPersonList(){
+  personListEl.innerHTML = '';
+  let currentLine = null;
+  people.forEach(p => {
+    if(!state.lines[p.line]) return;
+    if(p.line !== currentLine){
+      currentLine = p.line;
+      const label = document.createElement('div');
+      label.className = 'person-group-label';
+      label.textContent = currentLine + ' line';
+      personListEl.appendChild(label);
+    }
+    const row = document.createElement('label');
+    row.className = 'person-row';
+    row.innerHTML = `<input type="checkbox" data-person="${p.name}" ${state.people[p.name] ? 'checked' : ''}> <span>${p.name} <span style="color:#8a7f6a;">(Gen ${p.gen})</span></span>`;
+    personListEl.appendChild(row);
+  });
+  personListEl.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      state.people[cb.dataset.person] = cb.checked;
+      applyFilters();
+    });
+  });
+}
+
+const genGridEl = document.getElementById('gen-grid');
+generations.forEach(g => {
+  const chip = document.createElement('div');
+  chip.className = 'gen-chip active';
+  chip.textContent = 'Gen ' + g;
+  chip.dataset.gen = g;
+  chip.addEventListener('click', () => {
+    state.gens[g] = !state.gens[g];
+    chip.classList.toggle('active', state.gens[g]);
+    applyFilters();
+  });
+  genGridEl.appendChild(chip);
+});
+
+/* ---- date range dual slider ---- */
+const rangeMin = document.getElementById('range-min');
+const rangeMax = document.getElementById('range-max');
+rangeMin.min = rangeMax.min = YEAR_MIN;
+rangeMin.max = rangeMax.max = YEAR_MAX;
+rangeMin.value = YEAR_MIN;
+rangeMax.value = YEAR_MAX;
+const fillEl = document.getElementById('slider-range-fill');
+
+function updateSliderVisual(){
+  const pctMin = (rangeMin.value - YEAR_MIN) / (YEAR_MAX - YEAR_MIN) * 100;
+  const pctMax = (rangeMax.value - YEAR_MIN) / (YEAR_MAX - YEAR_MIN) * 100;
+  fillEl.style.left = pctMin + '%';
+  fillEl.style.right = (100 - pctMax) + '%';
+  document.getElementById('year-min-label').textContent = rangeMin.value;
+  document.getElementById('year-max-label').textContent = rangeMax.value;
+}
+[rangeMin, rangeMax].forEach(input => {
+  input.addEventListener('input', () => {
+    if(parseInt(rangeMin.value) > parseInt(rangeMax.value) - 1){
+      if(input === rangeMin) rangeMin.value = parseInt(rangeMax.value) - 1 >= YEAR_MIN ? parseInt(rangeMax.value) : rangeMax.value;
+      else rangeMax.value = parseInt(rangeMin.value) + 1 <= YEAR_MAX ? parseInt(rangeMin.value) : rangeMin.value;
+    }
+    state.yearMin = parseInt(rangeMin.value);
+    state.yearMax = parseInt(rangeMax.value);
+    updateSliderVisual();
+    applyFilters();
+  });
+});
+
+/* ---- line checkboxes ---- */
+document.getElementById('line-schofield').addEventListener('change', e => {
+  state.lines.Schofield = e.target.checked;
+  renderPersonList();
+  applyFilters();
+});
+document.getElementById('line-broadbent').addEventListener('change', e => {
+  state.lines.Broadbent = e.target.checked;
+  renderPersonList();
+  applyFilters();
+});
+
+/* ---- reset ---- */
+document.getElementById('reset-btn').addEventListener('click', () => {
+  state.lines.Schofield = true; state.lines.Broadbent = true;
+  document.getElementById('line-schofield').checked = true;
+  document.getElementById('line-broadbent').checked = true;
+  people.forEach(p => state.people[p.name] = true);
+  generations.forEach(g => state.gens[g] = true);
+  genGridEl.querySelectorAll('.gen-chip').forEach(c => c.classList.add('active'));
+  state.yearMin = YEAR_MIN; state.yearMax = YEAR_MAX;
+  rangeMin.value = YEAR_MIN; rangeMax.value = YEAR_MAX;
+  updateSliderVisual();
+  renderPersonList();
+  applyFilters();
+});
+
+/* ============================================================
+   FILTERING
+   ============================================================ */
+function applyFilters(){
+  let visible = 0;
+  const lineCounts = {Schofield:0, Broadbent:0};
+  markers.forEach(m => {
+    const e = m.evt;
+    const show = state.lines[e.line] && state.people[e.person] && state.gens[e.gen] &&
+                 e.year >= state.yearMin && e.year <= state.yearMax;
+    const el = m.getElement && m.getElement();
+    if(show){
+      if(!map.hasLayer(m)) m.addTo(map);
+      visible++;
+      lineCounts[e.line]++;
+    } else {
+      if(map.hasLayer(m)) map.removeLayer(m);
+    }
+  });
+  document.getElementById('visible-count').textContent = visible;
+  document.getElementById('total-count').textContent = events.length;
+  document.getElementById('count-schofield').textContent = lineCounts.Schofield;
+  document.getElementById('count-broadbent').textContent = lineCounts.Broadbent;
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+renderPersonList();
+updateSliderVisual();
+applyFilters();
+</script>
+</body>
+</html>
